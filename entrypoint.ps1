@@ -35,9 +35,9 @@ Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
     foreach ($Module in $RequiredModules) {
         if (-not (Get-InstalledPSResource -Name $Module -ErrorAction SilentlyContinue)) {
             Write-Host "${AnsiVerbose}`tInstalling required module '${AnsiInfo}$Module${AnsiVerbose}'...${AnsiReset}"
-            Install-PSResource -Name $Module -Scope CurrentUser -TrustRepository
+            Install-PSResource -Name $Module -Scope AllUsers -TrustRepository
         }
-        Import-Module -Name $Module -Force
+        Import-Module -Name $Module -Force -Scope Global
     }
 
     Write-Host "${AnsiReset}`tValidating '${AnsiInfo}$ModuleName${AnsiReset}' manifest..."
