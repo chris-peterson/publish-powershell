@@ -37,6 +37,7 @@ Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
             Write-Host "${AnsiVerbose}`tInstalling required module '${AnsiInfo}$Module${AnsiVerbose}'...${AnsiReset}"
             Install-Module -Name $Module -Scope CurrentUser -Force
         }
+        Import-Module -Name $Module -Force
     }
 
     Write-Host "${AnsiReset}`tValidating '${AnsiInfo}$ModuleName${AnsiReset}' manifest..."
