@@ -1,6 +1,8 @@
 #!/usr/bin/env pwsh
 [CmdletBinding(SupportsShouldProcess)]
-param()
+param(
+    [string]$ApiKey = $env:INPUT_APIKEY
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -96,7 +98,7 @@ Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
 
     if ($PSCmdlet.ShouldProcess($ModuleName, 'Publish to PSGallery')) {
         Write-Host "${AnsiReset}`tPublishing '${AnsiInfo}$ModuleName${AnsiReset}' to $($(Get-PSResourceRepository).Uri.AbsoluteUri)${AnsiReset}"
-        Publish-PSResource -ApiKey $env:INPUT_APIKEY -Path $ModuleDir
+        Publish-PSResource -ApiKey $ApiKey -Path $ModuleDir
         Write-Host "${AnsiSuccess}`t✅ Published https://$($(Get-PSResourceRepository).Uri.Host)/packages/$ModuleName${AnsiReset}"
     }
 }
