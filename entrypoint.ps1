@@ -23,19 +23,18 @@ Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
     $ModuleDir  = $_.Directory
     $ModuleName = $_.Directory.Name
 
-    # Test-ModuleManifest will fail if a required module is not installed,
-    # so install everything first
-    foreach ($Module in $Manifest.RequiredModules) {
-        $Name = if ($Module -is [string]) { $Module } else { $Module.ModuleName }
-        if (-not (Get-Module -ListAvailable -Name $Name)) {
-            Write-Host "`tInstalling required module '$Name'..."
-            Install-PSResource -Name $Name -Scope AllUsers -TrustRepository
-        }
-    }
-
     if ($SkipValidation) {
         Write-Host "`tSkipping manifest validation"
     } else {
+        # Test-ModuleManifest will fail if a required module is not installed,
+        # so install everything first
+        foreach ($Module in $Manifest.RequiredModules) {
+            $Name = if ($Module -is [string]) { $Module } else { $Module.ModuleName }
+            if (-not (Get-Module -ListAvailable -Name $Name)) {
+                Write-Host "`tInstalling required module '$Name'..."
+                Install-PSResource -Name $Name -Scope AllUsers -TrustRepository
+            }
+        }
         try {
             Write-Host "`tValidating '$ModuleName' manifest..."
             Test-ModuleManifest -Path $_
