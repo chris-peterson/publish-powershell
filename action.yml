@@ -19,6 +19,7 @@ runs:
   using: docker
   image: Dockerfile
   args:
+    - -ApiKey
     - ${{ inputs.ApiKey }}
-    - ${{ inputs.SkipValidation }}
-    - ${{ inputs.SkipPublish }}
+    - -SkipValidation:$${{ inputs.SkipValidation }}
+    - -SkipPublish:$${{ inputs.SkipPublish }}
