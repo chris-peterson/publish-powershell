@@ -38,7 +38,6 @@ Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
             Write-Host "${AnsiVerbose}`tInstalling required module '${AnsiInfo}$Module${AnsiVerbose}'...${AnsiReset}"
             Install-PSResource -Name $Module -Scope AllUsers -TrustRepository -WhatIf:$false
         }
-        Import-Module -Name $Module -Force -Scope Global
     }
 
     Write-Host "${AnsiReset}`tValidating '${AnsiInfo}$ModuleName${AnsiReset}' manifest..."
