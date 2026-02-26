@@ -1,15 +1,14 @@
 #!/usr/bin/env pwsh
-$ErrorActionPreference = 'Stop'
+[CmdletBinding(SupportsShouldProcess)]
+param()
 
+$ErrorActionPreference = 'Stop'
 
 # ANSI color codes
 $AnsiReset   = "`e[0m"
 $AnsiVerbose = "`e[90m"   # Bright black (gray)
 $AnsiInfo    = "`e[36m"   # Cyan
 $AnsiSuccess = "`e[32m"   # Green
-
-# workaround for https://github.com/PowerShell/PSResourceGet/issues/1806
-Get-PSResourceRepository | Out-Null
 
 Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
     Write-Host "${AnsiReset}"
@@ -33,9 +32,9 @@ Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
         }
     }
     foreach ($Module in $RequiredModules) {
-        if (-not (Get-InstalledPSResource -Name $Module -ErrorAction SilentlyContinue)) {
+        if (-not (Get-Module -ListAvailable -Name $Module)) {
             Write-Host "${AnsiVerbose}`tInstalling required module '${AnsiInfo}$Module${AnsiVerbose}'...${AnsiReset}"
-            Install-PSResource -Name $Module -Scope AllUsers -TrustRepository
+            Install-PSResource -Name $Module -Scope AllUsers -TrustRepository -WhatIf:$false
         }
         Import-Module -Name $Module -Force -Scope Global
     }
@@ -95,8 +94,9 @@ Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
         Write-Warning "Please open a bug report at https://github.com/chris-peterson/publish-powershell-modules/issues"
     }
 
-    Write-Host "${AnsiReset}`tPublishing '${AnsiInfo}$ModuleName${AnsiReset}' to $($(Get-PSResourceRepository).Uri.AbsoluteUri)${AnsiReset}"
-    Publish-PSResource -ApiKey $env:INPUT_APIKEY -Path $ModuleDir
-
-    Write-Host "${AnsiSuccess}`✅ Published https://$($(Get-PSResourceRepository).Uri.Host)/packages/$ModuleName${AnsiReset}"
+    if ($PSCmdlet.ShouldProcess($ModuleName, 'Publish to PSGallery')) {
+        Write-Host "${AnsiReset}`tPublishing '${AnsiInfo}$ModuleName${AnsiReset}' to $($(Get-PSResourceRepository).Uri.AbsoluteUri)${AnsiReset}"
+        Publish-PSResource -ApiKey $env:INPUT_APIKEY -Path $ModuleDir
+        Write-Host "${AnsiSuccess}`t✅ Published https://$($(Get-PSResourceRepository).Uri.Host)/packages/$ModuleName${AnsiReset}"
+    }
 }
