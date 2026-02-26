@@ -1,103 +1,58 @@
 #!/usr/bin/env pwsh
-[CmdletBinding(SupportsShouldProcess)]
-param(
-    [string]$ApiKey = $env:INPUT_APIKEY
-)
 
 $ErrorActionPreference = 'Stop'
 
-# ANSI color codes
-$AnsiReset   = "`e[0m"
-$AnsiVerbose = "`e[90m"   # Bright black (gray)
-$AnsiInfo    = "`e[36m"   # Cyan
-$AnsiSuccess = "`e[32m"   # Green
+param(
+    [Parameter(Mandatory)]
+    [string]
+    $ApiKey,
+
+    [Parameter()]
+    [switch]
+    $SkipValidation,
+
+    [Parameter()]
+    [switch]
+    $SkipPublish
+)
 
 Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
-    Write-Host "${AnsiReset}"
-    Write-Host "Processing '${AnsiInfo}$_${AnsiReset}'..."
+    Write-Host "Processing '$_'..."
 
     $Manifest   = Import-PowerShellDataFile -Path $_
     $ModuleDir  = $_.Directory
     $ModuleName = $_.Directory.Name
 
-    # by design, [Test-ModuleManifest](https://github.com/PowerShell/PowerShell/blob/master/src/System.Management.Automation/engine/Modules/TestModuleManifestCommand.cs#L196)
-    # will fail if a required module is not installed.  since we have no way of anticipating what modules an author might require
-    # we load and install everything first
-    $RequiredModules = @()
-    if ($Manifest.RequiredModules) {
-        foreach ($Module in $Manifest.RequiredModules) {
-            if ($Module -is [string]) {
-                $RequiredModules += $Module
-            } elseif ($Module -is [hashtable]) {
-                $RequiredModules += $Module.ModuleName
-            }
-        }
-    }
-    foreach ($Module in $RequiredModules) {
-        if (-not (Get-Module -ListAvailable -Name $Module)) {
-            Write-Host "${AnsiVerbose}`tInstalling required module '${AnsiInfo}$Module${AnsiVerbose}'...${AnsiReset}"
-            Install-PSResource -Name $Module -Scope AllUsers -TrustRepository -WhatIf:$false
+    # Test-ModuleManifest will fail if a required module is not installed,
+    # so install everything first
+    foreach ($Module in $Manifest.RequiredModules) {
+        $Name = if ($Module -is [string]) { $Module } else { $Module.ModuleName }
+        if (-not (Get-Module -ListAvailable -Name $Name)) {
+            Write-Host "`tInstalling required module '$Name'..."
+            Install-PSResource -Name $Name -Scope AllUsers -TrustRepository
         }
     }
 
-    Write-Host "${AnsiReset}`tValidating '${AnsiInfo}$ModuleName${AnsiReset}' manifest..."
-    $Manifest = Test-ModuleManifest -Path $_
-
-    try {
-        $FormatEnumerationLimit = -1
-        $MaxLineLength = 120
-        $Manifest | Format-List | Out-String -Stream | ForEach-Object {
-            if ($_.Trim() -eq '') {
-                return
-            }
-            $Line = $_
-            $Index = $Line.IndexOf(':')
-            if ($Index -gt 0) {
-                $Value = $Line.Substring($Index + 1).Trim()
-                if ($Value -eq '' -or $Value -eq '{}'){
-                    return
-                }
-            }
-            if ($Line.Length -le $MaxLineLength) {
-                Write-Host "${AnsiVerbose}`t`t$Line${AnsiReset}"
-            } elseif ($Line.Contains(',')) {
-                $Index = $Line.IndexOf(':')
-                if ($Index -gt 0) {
-                    $Property = $Line.Substring(0, $Index + 1)
-                    $Value = $Line.Substring($Index + 1).TrimStart()
-                    Write-Host "${AnsiVerbose}`t`t$Property {${AnsiReset}"
-                    $Parts = $Value.TrimStart('{').TrimEnd('}').Split(',')
-                    $CurrentLine = ''
-                    foreach ($Part in $Parts) {
-                        $Trimmed = $Part.Trim()
-                        if ($CurrentLine.Length + $Trimmed.Length + 2 -gt $MaxLineLength) {
-                            Write-Host "${AnsiVerbose}`t`t`t$CurrentLine,${AnsiReset}"
-                            $CurrentLine = $Trimmed
-                        } else {
-                            if ($CurrentLine) {
-                                $CurrentLine += ', '
-                            }
-                            $CurrentLine += $Trimmed
-                        }
-                    }
-                    if ($CurrentLine) {
-                        Write-Host "${AnsiVerbose}`t`t`t$CurrentLine${AnsiReset}"
-                    }
-                    Write-Host "${AnsiVerbose}`t`t}${AnsiReset}"
-                } else {
-                    Write-Host "${AnsiVerbose}`t`t$Line${AnsiReset}"
-                }
-            }
+    if ($SkipValidation) {
+        Write-Host "`tSkipping manifest validation"
+    } else {
+        try {
+            Write-Host "`tValidating '$ModuleName' manifest..."
+            Test-ModuleManifest -Path $_
+        } catch {
+            Write-Error "$_`nHint: use 'SkipValidation' to bypass manifest validation."
         }
     }
-    catch {
-        Write-Warning "`tError formatting manifest: $_"
-        Write-Warning "Please open a bug report at https://github.com/chris-peterson/publish-powershell-modules/issues"
-    }
 
-    if ($PSCmdlet.ShouldProcess($ModuleName, 'Publish to PSGallery')) {
-        Write-Host "${AnsiReset}`tPublishing '${AnsiInfo}$ModuleName${AnsiReset}' to $($(Get-PSResourceRepository).Uri.AbsoluteUri)${AnsiReset}"
-        Publish-PSResource -ApiKey $ApiKey -Path $ModuleDir
-        Write-Host "${AnsiSuccess}`t✅ Published https://$($(Get-PSResourceRepository).Uri.Host)/packages/$ModuleName${AnsiReset}"
+    if ($SkipPublish) {
+        Write-Host "`tSkipping publish"
+    } else {
+        try {
+            Write-Host "`tPublishing '$ModuleName'..."
+            Publish-PSResource -ApiKey $ApiKey -Path $ModuleDir
+            Write-Host "`tPublished '$ModuleName'"
+        } catch {
+            Write-Error "$_`nHint: use 'SkipPublish' to test without publishing."
+        }
     }
 }

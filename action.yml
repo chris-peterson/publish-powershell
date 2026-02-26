@@ -7,8 +7,18 @@ inputs:
   ApiKey:
     description: The API Key for pushing to PowerShell Gallery
     required: true
+  SkipValidation:
+    description: Skip Test-ModuleManifest validation (e.g. issue(s) with RequiredModules that you want to ignore)
+    required: false
+    default: 'false'
+  SkipPublish:
+    description: Skip publishing (e.g. if you want to test the module(s) without actually publishing it)
+    required: false
+    default: 'false'
 runs:
   using: docker
   image: Dockerfile
   args:
     - ${{ inputs.ApiKey }}
+    - ${{ inputs.SkipValidation }}
+    - ${{ inputs.SkipPublish }}
