@@ -1,7 +1,5 @@
 #!/usr/bin/env pwsh
 
-$ErrorActionPreference = 'Stop'
-
 param(
     [Parameter(Mandatory)]
     [string]
@@ -15,6 +13,8 @@ param(
     [switch]
     $SkipPublish
 )
+
+$ErrorActionPreference = 'Stop'
 
 Get-ChildItem -Recurse -Filter '*.psd1' | ForEach-Object {
     Write-Host "Processing '$_'..."
